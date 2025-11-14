@@ -58,9 +58,11 @@ export default function PlayerScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Sincronizar estado del reproductor
+  // 🔧 FIX: Sincronizar estado del reproductor
   useEffect(() => {
-    setIsPlaying(playbackState === State.Playing);
+    // Soporte para ambas versiones de react-native-track-player
+    const currentState = playbackState?.state ?? playbackState;
+    setIsPlaying(currentState === State.Playing);
   }, [playbackState]);
 
   async function togglePlayback() {
@@ -70,10 +72,8 @@ export default function PlayerScreen() {
       
       if (state === State.Playing) {
         await TrackPlayer.pause();
-        setIsPlaying(false);
       } else {
         await TrackPlayer.play();
-        setIsPlaying(true);
       }
     } catch (error) {
       console.error('Error al reproducir:', error);
