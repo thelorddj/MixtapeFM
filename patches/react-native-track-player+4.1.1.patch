@@ -1,0 +1,56 @@
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+index b2409a0..cde61d5 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+@@ -545,7 +545,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         if (index >= 0 && index < musicService.tracks.size) {
+-            callback.resolve(Arguments.fromBundle(musicService.tracks[index].originalItem))
++            callback.resolve(Arguments.fromBundle(musicService.tracks[index].originalItem ?: Bundle()))
+         } else {
+             callback.resolve(null)
+         }
+@@ -585,7 +585,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         callback.resolve(
+             if (musicService.tracks.isEmpty()) null
+             else Arguments.fromBundle(
+-                musicService.tracks[musicService.getCurrentTrackIndex()].originalItem
++                musicService.tracks[musicService.getCurrentTrackIndex()].originalItem ?: Bundle()
+             )
+         )
+     }
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+index 9d6d869..f737d14 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+@@ -94,7 +94,7 @@ class MusicService : HeadlessJsTaskService() {
+     private var compactCapabilities: List<Capability> = emptyList()
+ 
+     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+-        startTask(getTaskConfig(intent))
++        startTask(getTaskConfig(intent)!!)
+         startAndStopEmptyNotificationToAvoidANR()
+         return START_STICKY
+     }
+@@ -756,17 +756,17 @@ class MusicService : HeadlessJsTaskService() {
+             ?.emit(event, payload)
+     }
+ 
+-    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig {
++    override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
+         return HeadlessJsTaskConfig(TASK_KEY, Arguments.createMap(), 0, true)
+     }
+ 
+     @MainThread
+-    override fun onBind(intent: Intent?): IBinder {
++    override fun onBind(intent: Intent): IBinder {
+         return binder
+     }
+ 
+     @MainThread
+-    override fun onTaskRemoved(rootIntent: Intent?) {
++    override fun onTaskRemoved(rootIntent: Intent) {
+         super.onTaskRemoved(rootIntent)
+ 
+         if (!::player.isInitialized) return
