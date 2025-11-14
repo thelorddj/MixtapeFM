@@ -43,7 +43,8 @@
             "newArchEnabled": false
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {
