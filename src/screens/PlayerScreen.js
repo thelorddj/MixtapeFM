@@ -19,44 +19,41 @@ export default function PlayerScreen() {
   const playbackState = usePlaybackState();
 
   // Inicializar TrackPlayer
-  useEffect(() => {
-    const setupPlayer = async () => {
-      try {
-        await TrackPlayer.setupPlayer();
-        await TrackPlayer.add({
-          id: 'livestream',
-          url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
-          title: 'Mixtape FM',
-          artist: 'En Vivo',
-          artwork: require('../../assets/images/logo.png'),
-          isLiveStream: true,
-        });
-      } catch (e) {
-        console.log('Player ya inicializado:', e);
-      }
-    };
-    setupPlayer();
-  }, []);
+useEffect(() => {
+  const setupPlayer = async () => {
+    try {
+      await TrackPlayer.setupPlayer();
+      
+      // 🔥 CONFIGURAR CONTROLES NATIVOS
+      await TrackPlayer.updateOptions({
+        android: {
+          appKilledPlaybackBehavior: 'ContinuePlayback',
+        },
+        capabilities: [
+          TrackPlayer.CAPABILITY_PLAY,
+          TrackPlayer.CAPABILITY_PAUSE,
+          TrackPlayer.CAPABILITY_STOP,
+        ],
+        compactCapabilities: [
+          TrackPlayer.CAPABILITY_PLAY,
+          TrackPlayer.CAPABILITY_PAUSE,
+        ],
+      });
 
-  // Actualizar metadata cada 10 segundos
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const response = await axios.get('https://radio.mixtapefm.xyz/api/nowplaying/1');
-        const data = response.data;
-        setMetadata({
-          song: data.now_playing?.song?.text || 'Mixtape FM',
-          listeners: data.listeners?.current || 0
-        });
-      } catch (error) {
-        console.log('Error metadata:', error);
-      }
-    };
-
-    fetchMetadata();
-    const interval = setInterval(fetchMetadata, 10000);
-    return () => clearInterval(interval);
-  }, []);
+      await TrackPlayer.add({
+        id: 'livestream',
+        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
+        title: 'Mixtape FM',
+        artist: 'En Vivo',
+        artwork: require('../../assets/images/logo.png'),
+        isLiveStream: true,
+      });
+    } catch (e) {
+      console.log('Player ya inicializado:', e);
+    }
+  };
+  setupPlayer();
+}, []);
 
   // 🔧 FIX: Sincronizar estado del reproductor
   useEffect(() => {
@@ -100,12 +97,11 @@ export default function PlayerScreen() {
         {isPlaying ? '🔴 EN VIVO' : '⚫ Detenido'}
       </Text>
 
-      {isPlaying && (
-        <View style={styles.metadataContainer}>
-          <Text style={styles.songText}>{metadata.song}</Text>
-          <Text style={styles.listeners}>👥 {metadata.listeners} oyentes</Text>
-        </View>
-      )}
+      <View style={styles.metadataContainer}>
+  <Text style={styles.songText}>
+    {isPlaying ? metadata.song : 'Mixtape FM'}
+  </Text>
+</View>
 
       <TouchableOpacity
         style={[styles.playButton, isPlaying && styles.playButtonActive]}
@@ -161,18 +157,16 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   metadataContainer: {
-    alignItems: 'center',
-    marginBottom: 15,
+  alignItems: 'center',
+  marginBottom: 15,
+  height: 50, // ← ALTURA FIJA para que no se mueva
+  justifyContent: 'center',
   },
   songText: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  listeners: {
-    fontSize: 14,
-    color: '#aaa',
+  fontSize: 16,
+  color: '#fff',
+  textAlign: 'center',
+  paddingHorizontal: 20, // ← Para que no se salga
   },
   playButton: {
     width: 120,
