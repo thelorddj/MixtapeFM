@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import TrackPlayer, { State, usePlaybackState } from 'react-native-track-player';
+import TrackPlayer, { State, usePlaybackState, Capability } from 'react-native-track-player';
 import { Ionicons } from '@expo/vector-icons';
 import SocialButtons from '../components/SocialButtons';
 import axios from 'axios';
@@ -24,22 +24,6 @@ useEffect(() => {
     try {
       await TrackPlayer.setupPlayer();
       
-      // 🔥 CONFIGURAR CONTROLES NATIVOS
-      await TrackPlayer.updateOptions({
-        android: {
-          appKilledPlaybackBehavior: 'ContinuePlayback',
-        },
-        capabilities: [
-          TrackPlayer.CAPABILITY_PLAY,
-          TrackPlayer.CAPABILITY_PAUSE,
-          TrackPlayer.CAPABILITY_STOP,
-        ],
-        compactCapabilities: [
-          TrackPlayer.CAPABILITY_PLAY,
-          TrackPlayer.CAPABILITY_PAUSE,
-        ],
-      });
-
       await TrackPlayer.add({
         id: 'livestream',
         url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
@@ -48,6 +32,23 @@ useEffect(() => {
         artwork: require('../../assets/images/logo.png'),
         isLiveStream: true,
       });
+
+      // 🔥 MOVER updateOptions DESPUÉS de add
+      await TrackPlayer.updateOptions({
+        android: {
+          appKilledPlaybackBehavior: 'ContinuePlayback',
+        },
+        capabilities: [
+          Capability.Play,
+          Capability.Pause,
+          Capability.Stop,
+        ],
+        compactCapabilities: [
+          Capability.Play,
+          Capability.Pause,
+        ],
+      });
+
     } catch (e) {
       console.log('Player ya inicializado:', e);
     }
