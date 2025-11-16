@@ -19,46 +19,67 @@ export default function PlayerScreen() {
   const playbackState = usePlaybackState();
 
   // Inicializar TrackPlayer
-useEffect(() => {
-  const setupPlayer = async () => {
-    try {
-      await TrackPlayer.setupPlayer();
-      
-      await TrackPlayer.add({
-        id: 'livestream',
-        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
-        title: 'Mixtape FM',
-        artist: 'En Vivo',
-        artwork: require('../../assets/images/logo.png'),
-        isLiveStream: true,
-      });
-
-      // 🔥 MOVER updateOptions DESPUÉS de add
-      await TrackPlayer.updateOptions({
-        android: {
-          appKilledPlaybackBehavior: 'ContinuePlayback',
-        },
-        capabilities: [
-          Capability.Play,
-          Capability.Pause,
-          Capability.Stop,
-        ],
-        compactCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-        ],
-      });
-
-    } catch (e) {
-      console.log('Player ya inicializado:', e);
-    }
-  };
-  setupPlayer();
-}, []);
-
-  // 🔧 FIX: Sincronizar estado del reproductor
   useEffect(() => {
-    // Soporte para ambas versiones de react-native-track-player
+    const setupPlayer = async () => {
+      try {
+        await TrackPlayer.setupPlayer();
+        
+        await TrackPlayer.add({
+          id: 'livestream',
+          url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
+          title: 'Mixtape FM',
+          artist: 'En Vivo',
+          artwork: require('../../assets/images/logo.png'),
+          isLiveStream: true,
+        });
+
+        await TrackPlayer.updateOptions({
+          android: {
+            appKilledPlaybackBehavior: 'ContinuePlayback',
+          },
+          capabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+          compactCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+          notificationCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+        });
+
+      } catch (e) {
+        console.log('Player ya inicializado:', e);
+      }
+    };
+    setupPlayer();
+  }, []);
+
+  // Actualizar metadata cada 10 segundos
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const response = await axios.get('https://radio.mixtapefm.xyz/api/nowplaying/1');
+        const data = response.data;
+        setMetadata({
+          song: data.now_playing?.song?.text || 'Mixtape FM',
+          listeners: data.listeners?.current || 0
+        });
+      } catch (error) {
+        console.log('Error metadata:', error);
+      }
+    };
+
+    fetchMetadata();
+    const interval = setInterval(fetchMetadata, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sincronizar estado del reproductor
+  useEffect(() => {
     const currentState = playbackState?.state ?? playbackState;
     setIsPlaying(currentState === State.Playing);
   }, [playbackState]);
@@ -94,15 +115,12 @@ useEffect(() => {
       <Text style={styles.radioName}>Mixtape FM</Text>
       <Text style={styles.tagline}>De los cassette al streaming</Text>
 
-      <Text style={styles.status}>
-        {isPlaying ? '🔴 EN VIVO' : '⚫ Detenido'}
-      </Text>
-
+      {/* Metadata reemplaza al status */}
       <View style={styles.metadataContainer}>
-  <Text style={styles.songText}>
-    {isPlaying ? metadata.song : 'Mixtape FM'}
-  </Text>
-</View>
+        <Text style={styles.songText}>
+          {isPlaying ? metadata.song : 'Presiona Play para escuchar'}
+        </Text>
+      </View>
 
       <TouchableOpacity
         style={[styles.playButton, isPlaying && styles.playButtonActive]}
@@ -114,7 +132,7 @@ useEffect(() => {
         ) : (
           <Ionicons
             name={isPlaying ? 'pause' : 'play'}
-            size={60}
+            size={50}
             color="#fff"
           />
         )}
@@ -131,52 +149,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#23058fff',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   logoContainer: {
-    marginBottom: 10,
+    marginBottom: 15,
+    marginTop: 20,
   },
   logo: {
-    width: 170,
-    height: 170,
+    width: 140,
+    height: 140,
   },
   radioName: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#ffffffff',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   tagline: {
     fontSize: 16,
     color: '#ffffffff',
-    marginBottom: 20,
-  },
-  status: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#fff',
+    marginBottom: 25,
   },
   metadataContainer: {
-  alignItems: 'center',
-  marginBottom: 15,
-  height: 50, // ← ALTURA FIJA para que no se mueva
-  justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    height: 60,
+    justifyContent: 'center',
+    paddingHorizontal: 30,
   },
   songText: {
-  fontSize: 16,
-  color: '#fff',
-  textAlign: 'center',
-  paddingHorizontal: 20, // ← Para que no se salga
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   playButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: '#0c0000ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 50,
     elevation: 5,
   },
   playButtonActive: {
