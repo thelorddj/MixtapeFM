@@ -19,44 +19,46 @@ export default function PlayerScreen() {
   const playbackState = usePlaybackState();
 
   // Inicializar TrackPlayer
-  useEffect(() => {
-    const setupPlayer = async () => {
-      try {
-        await TrackPlayer.setupPlayer();
-        
-        await TrackPlayer.add({
-          id: 'livestream',
-          url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
-          title: 'Mixtape FM',
-          artist: 'En Vivo',
-          artwork: require('../../assets/images/logo.png'),
-          isLiveStream: true,
-        });
+useEffect(() => {
+  const setupPlayer = async () => {
+    try {
+      await TrackPlayer.setupPlayer();
+      
+      await TrackPlayer.add({
+        id: 'livestream',
+        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
+        title: 'Mixtape FM',
+        artist: 'En Vivo',
+        artwork: require('../../assets/images/logo.png'),
+        isLiveStream: true,
+        duration: 0, // 🔥 NUEVO - Sin duración = sin barra
+      });
 
-        await TrackPlayer.updateOptions({
-          android: {
-            appKilledPlaybackBehavior: 'ContinuePlayback',
-          },
-          capabilities: [
-            Capability.Play,
-            Capability.Pause,
-          ],
-          compactCapabilities: [
-            Capability.Play,
-            Capability.Pause,
-          ],
-          notificationCapabilities: [
-            Capability.Play,
-            Capability.Pause,
-          ],
-        });
+      await TrackPlayer.updateOptions({
+        progressUpdateEventInterval: 0, // 🔥 NUEVO - Quita barra de progreso
+        android: {
+          appKilledPlaybackBehavior: 'ContinuePlayback',
+        },
+        capabilities: [
+          Capability.Play,
+          Capability.Pause,
+        ],
+        compactCapabilities: [
+          Capability.Play,
+          Capability.Pause,
+        ],
+        notificationCapabilities: [
+          Capability.Play,
+          Capability.Pause,
+        ],
+      });
 
-      } catch (e) {
-        console.log('Player ya inicializado:', e);
-      }
-    };
-    setupPlayer();
-  }, []);
+    } catch (e) {
+      console.log('Player ya inicializado:', e);
+    }
+  };
+  setupPlayer();
+}, []);
 
   // Actualizar metadata cada 10 segundos
   useEffect(() => {
