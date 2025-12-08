@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mixtape FM",
     "slug": "MiRadio",
-    "version": "1.0.0",
+    "version": "1.0.1", // 🔥 Actualiza versión
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
         "backgroundColor": "#1a1a1a"
       },
       "package": "com.mixtapeoficialmx.app",
-      "versionCode": 2,
+      "versionCode": 3, // 🔥 Incrementa esto para nueva build
       "permissions": [
         "INTERNET",
         "FOREGROUND_SERVICE",
