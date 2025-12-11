@@ -23,13 +23,13 @@ workflows:
       - name: Set up keystore
         script: |
           echo $KEYSTORE_BASE64 | base64 --decode > $KEYSTORE_PATH
-      - name: Build signed Android AAB
+      - name: Build signed Android APK
         script: |
           cd android
-          ./gradlew bundleRelease \
+          ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=$KEYSTORE_PATH \
             -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
             -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
             -Pandroid.injected.signing.key.password=$KEY_PASSWORD
     artifacts:
-      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
