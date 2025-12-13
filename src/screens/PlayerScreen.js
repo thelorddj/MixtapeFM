@@ -20,30 +20,10 @@ const isTablet = width >= 768;
 export default function PlayerScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [metadata, setMetadata] = useState({ song: 'Mixtape FM' }); // ✅ Sin listeners
+  const [metadata, setMetadata] = useState({ song: 'Mixtape FM' });
   const playbackState = usePlaybackState();
   const appState = useRef(AppState.currentState);
-
-  // KILL PLAYER AL CERRAR APP
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (
-        appState.current.match(/active/) &&
-        nextAppState === 'background'
-      ) {
-        const state = await TrackPlayer.getState();
-        if (state === State.Playing) {
-          await TrackPlayer.stop();
-          await TrackPlayer.reset();
-        }
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
+  const playerReady = useRef(false); // 🔥 Bandera para saber si el player está listo
 
   // Inicializar TrackPlayer
   useEffect(() => {
@@ -80,15 +60,45 @@ export default function PlayerScreen() {
           ],
         });
 
+        playerReady.current = true; // 🔥 Player listo
+
       } catch (e) {
         console.log('Player ya inicializado:', e);
+        playerReady.current = true; // 🔥 Asumimos que ya estaba listo
       }
     };
     setupPlayer();
 
     return () => {
+      playerReady.current = false;
       TrackPlayer.stop();
       TrackPlayer.reset();
+    };
+  }, []);
+
+  // KILL PLAYER AL CERRAR APP - 🔥 CON VALIDACIÓN
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (
+        appState.current.match(/active/) &&
+        nextAppState === 'background' &&
+        playerReady.current // 🔥 Solo actúa si el player está listo
+      ) {
+        try {
+          const state = await TrackPlayer.getState();
+          if (state === State.Playing) {
+            await TrackPlayer.stop();
+            await TrackPlayer.reset();
+          }
+        } catch (error) {
+          console.log('Error al detener player:', error);
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription?.remove();
     };
   }, []);
 
@@ -107,7 +117,6 @@ export default function PlayerScreen() {
         
         const newSong = data.now_playing?.song?.text || 'Mixtape FM';
         
-        // ✅ Solo compara y actualiza la canción
         setMetadata(prev => {
           if (prev.song !== newSong) {
             return { song: newSong };
@@ -177,7 +186,6 @@ export default function PlayerScreen() {
         <Text style={styles.songText}>
           {isPlaying ? metadata.song : 'Presiona Play para escuchar'}
         </Text>
-        {/* ✅ Se eliminó el contador de oyentes */}
       </View>
 
       <TouchableOpacity
@@ -242,7 +250,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  // ✅ Se eliminó listenersText
   playButton: {
     width: isTablet ? 140 : 100,
     height: isTablet ? 140 : 100,
