@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import SocialButtons from '../components/SocialButtons';
 import axios from 'axios';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
 
 export default function PlayerScreen() {
@@ -23,7 +23,7 @@ export default function PlayerScreen() {
   const [metadata, setMetadata] = useState({ song: 'Mixtape FM' });
   const playbackState = usePlaybackState();
   const appState = useRef(AppState.currentState);
-  const playerReady = useRef(false); // 🔥 Bandera para saber si el player está listo
+  const playerReady = useRef(false);
 
   // Inicializar TrackPlayer
   useEffect(() => {
@@ -60,29 +60,35 @@ export default function PlayerScreen() {
           ],
         });
 
-        playerReady.current = true; // 🔥 Player listo
+        playerReady.current = true;
 
       } catch (e) {
         console.log('Player ya inicializado:', e);
-        playerReady.current = true; // 🔥 Asumimos que ya estaba listo
+        playerReady.current = true;
       }
     };
     setupPlayer();
 
     return () => {
-      playerReady.current = false;
-      TrackPlayer.stop();
-      TrackPlayer.reset();
+      (async () => {
+        try {
+          playerReady.current = false;
+          await TrackPlayer.stop();
+          await TrackPlayer.reset();
+        } catch (e) {
+          console.log('Error cleanup:', e);
+        }
+      })();
     };
   }, []);
 
-  // KILL PLAYER AL CERRAR APP - 🔥 CON VALIDACIÓN
+  // KILL PLAYER AL CERRAR APP
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (
         appState.current.match(/active/) &&
         nextAppState === 'background' &&
-        playerReady.current // 🔥 Solo actúa si el player está listo
+        playerReady.current
       ) {
         try {
           const state = await TrackPlayer.getState();
@@ -102,7 +108,7 @@ export default function PlayerScreen() {
     };
   }, []);
 
-  // METADATA - Solo canción, sin listeners
+  // METADATA
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -148,6 +154,7 @@ export default function PlayerScreen() {
       if (state === State.Playing) {
         await TrackPlayer.stop();
         await TrackPlayer.reset();
+        setIsPlaying(false);
       } else {
         await TrackPlayer.reset();
         await TrackPlayer.add({
