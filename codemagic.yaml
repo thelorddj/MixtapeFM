@@ -19,9 +19,9 @@ workflows:
       - name: Prebuild native code
         script: |
           npx expo prebuild --platform android --clean
-      - name: Build Android APK
+      - name: Build Android AAB
         script: |
           cd android
-          ./gradlew assembleRelease
+          ./gradlew bundleRelease
     artifacts:
       - android/app/build/outputs/**/*.apk
