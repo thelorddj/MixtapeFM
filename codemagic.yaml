@@ -24,4 +24,4 @@ workflows:
           cd android
           ./gradlew bundleRelease
     artifacts:
-      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
