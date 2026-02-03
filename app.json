@@ -3,7 +3,7 @@
     "name": "Mixtape FM",
     "slug": "MiRadio",
     "version": "1.0.3",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -33,19 +33,22 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "newArchEnabled": false
-          },
-          "ios": {
-            "newArchEnabled": false
-          }
-        }
-      ],
-      "expo-asset"
-    ],
+  [
+    "expo-build-properties",
+    {
+      "android": {
+        "newArchEnabled": false,
+        "compileSdkVersion": 34,
+        "targetSdkVersion": 34,
+        "buildToolsVersion": "34.0.0"
+      },
+      "ios": {
+        "newArchEnabled": false
+      }
+    }
+  ],
+  "expo-asset"
+],
     "extra": {
       "eas": {
         "projectId": "ced480e7-ea6f-4efe-993a-798a91b9a143"

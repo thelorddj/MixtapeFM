@@ -14,7 +14,7 @@ export const scheduleData = [
   {
     id: '3',
     name: 'Bonus Track con Malú Silva',
-    time: '21:00 - 22:00 HRS MX',
+    time: '22:00 - 23:00 HRS MX',
     days: 'Lunes, Miercoles y Viernes',
   },
 ];

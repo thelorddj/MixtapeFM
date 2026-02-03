@@ -87,22 +87,37 @@ useEffect(() => {
   }, [playbackState]);
 
   async function togglePlayback() {
-    try {
-      setIsLoading(true);
-      const state = await TrackPlayer.getState();
+  try {
+    setIsLoading(true);
+    const state = await TrackPlayer.getState();
+    
+    if (state === State.Playing) {
+      // 🔥 MATA TODO - No solo pausa
+      await TrackPlayer.reset(); 
+      setIsPlaying(false);
+    } else {
+      // 🔥 RECONECTA FRESH
+      await TrackPlayer.reset(); // Limpia cualquier buffer residual
       
-      if (state === State.Playing) {
-        await TrackPlayer.pause();
-      } else {
-        await TrackPlayer.play();
-      }
-    } catch (error) {
-      console.error('Error al reproducir:', error);
-      alert('No se pudo conectar con la radio');
-    } finally {
-      setIsLoading(false);
+      await TrackPlayer.add({
+        id: 'livestream',
+        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
+        title: 'Mixtape FM',
+        artist: 'En Vivo',
+        artwork: require('../../assets/images/logo.png'),
+        isLiveStream: true,
+        duration: 0,
+      });
+      
+      await TrackPlayer.play();
     }
+  } catch (error) {
+    console.error('Error al reproducir:', error);
+    alert('No se pudo conectar con la radio');
+  } finally {
+    setIsLoading(false);
   }
+}
 
   return (
     <View style={styles.container}>
