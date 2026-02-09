@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import PlayerScreen from './src/screens/PlayerScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import ScheduleScreen from './src/screens/ScheduleScreen';
-import FacebookScreen from './src/screens/FacebookScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -26,9 +25,7 @@ export default function App() {
               iconName = focused ? 'radio' : 'radio-outline';
             } else if (route.name === 'Programación') {
               iconName = focused ? 'calendar' : 'calendar-outline';
-            } else if (route.name === 'Facebook') {
-              iconName = focused ? 'logo-facebook' : 'logo-facebook';
-            }
+            } 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarActiveTintColor: '#e91e63',
