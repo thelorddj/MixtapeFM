@@ -19,6 +19,13 @@ export default function SocialButtons() {
           <Ionicons name="logo-whatsapp" size={30} color="#fff" />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: '#1877F2' }]}
+          onPress={() => openURL('https://www.facebook.com/Mixtapefmoficial')}
+        >
+          <Ionicons name="logo-facebook" size={30} color="#fff" />
+        </TouchableOpacity>
+
       </View>
     </View>
   );
