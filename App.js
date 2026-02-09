@@ -56,7 +56,6 @@ export default function App() {
       
         <Tab.Screen name="Radio" component={PlayerScreen} />
         <Tab.Screen name="Programación" component={ScheduleScreen} />
-        <Tab.Screen name="Facebook" component={FacebookScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );
