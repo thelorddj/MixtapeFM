@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,65 +6,260 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  AppState,
 } from 'react-native';
-import TrackPlayer, { State, usePlaybackState, Capability } from 'react-native-track-player';
+import TrackPlayer, { 
+  State, 
+  usePlaybackState, 
+  Capability,
+  Event,
+  useTrackPlayerEvents,
+} from 'react-native-track-player';
 import { Ionicons } from '@expo/vector-icons';
 import SocialButtons from '../components/SocialButtons';
 import axios from 'axios';
+import NetInfo from '@react-native-community/netinfo';
+import KeepAwake from 'react-native-keep-awake';
+
+const STREAM_URL = 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+';
+const METADATA_URL = 'https://radio.mixtapefm.xyz/api/nowplaying/1';
+const KEEPALIVE_INTERVAL = 90000; // 90 segundos
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 export default function PlayerScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [metadata, setMetadata] = useState({ song: 'Mixtape FM', listeners: 0 });
+  const [isConnected, setIsConnected] = useState(true);
   const playbackState = usePlaybackState();
+  const reconnectAttempts = useRef(0);
+  const keepAliveTimer = useRef(null);
+  const lastPlayingCheck = useRef(Date.now());
+  const isManualPause = useRef(false);
 
-  // Inicializar TrackPlayer
-useEffect(() => {
-  const setupPlayer = async () => {
-    try {
-      await TrackPlayer.setupPlayer();
+  // 🔥 Monitor de red
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const connected = state.isConnected && state.isInternetReachable !== false;
+      setIsConnected(connected);
       
+      if (connected && isPlaying && !isManualPause.current) {
+        // Red volvió y estábamos reproduciendo
+        console.log('🌐 Red restaurada, verificando stream...');
+        setTimeout(() => verifyAndReconnect(), 1000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isPlaying]);
+
+  // 🔥 Listener de errores con auto-reconexión
+  useTrackPlayerEvents([Event.PlaybackError], async (event) => {
+    console.log('🔴 Error de reproducción:', event);
+    if (!isManualPause.current) {
+      await handleReconnect('error');
+    }
+  });
+
+  // 🔥 Monitor de estado de playback
+  useTrackPlayerEvents([Event.PlaybackState], async (event) => {
+    console.log('📊 Estado cambiado:', event.state);
+    
+    // Si se detuvo inesperadamente y no fue pausa manual
+    if (event.state === State.Stopped && isPlaying && !isManualPause.current) {
+      console.log('⚠️ Stream detenido inesperadamente');
+      await handleReconnect('stopped');
+    }
+  });
+
+  // 🔥 KeepAlive - Mantiene conexión viva
+  useEffect(() => {
+    if (isPlaying && !isManualPause.current) {
+      keepAliveTimer.current = setInterval(async () => {
+        try {
+          const state = await TrackPlayer.getState();
+          const now = Date.now();
+          
+          // Si lleva más de 2 minutos sin verificar y está "playing"
+          if (state === State.Playing && (now - lastPlayingCheck.current) > 120000) {
+            console.log('🔄 KeepAlive: Refrescando buffer...');
+            // Micro-reset del buffer sin pausar
+            await TrackPlayer.seekTo(0);
+            lastPlayingCheck.current = now;
+          }
+          
+          // Verifica que realmente esté sonando
+          if (state !== State.Playing && state !== State.Buffering) {
+            console.log('⚠️ KeepAlive: Stream no está reproduciendo');
+            await handleReconnect('keepalive');
+          } else {
+            lastPlayingCheck.current = now;
+          }
+        } catch (error) {
+          console.error('Error en KeepAlive:', error);
+        }
+      }, KEEPALIVE_INTERVAL);
+    } else {
+      if (keepAliveTimer.current) {
+        clearInterval(keepAliveTimer.current);
+        keepAliveTimer.current = null;
+      }
+    }
+
+    return () => {
+      if (keepAliveTimer.current) {
+        clearInterval(keepAliveTimer.current);
+      }
+    };
+  }, [isPlaying]);
+
+  // 🔥 Manejo de app en background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active' && isPlaying && !isManualPause.current) {
+        console.log('📱 App volvió al frente, verificando stream...');
+        setTimeout(() => verifyAndReconnect(), 500);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [isPlaying]);
+
+  // 🔥 Verificar y reconectar si es necesario
+  const verifyAndReconnect = async () => {
+    try {
+      const state = await TrackPlayer.getState();
+      if (state !== State.Playing && state !== State.Buffering && !isManualPause.current) {
+        console.log('🔄 Stream no está activo, reconectando...');
+        await handleReconnect('verify');
+      }
+    } catch (error) {
+      console.error('Error verificando estado:', error);
+    }
+  };
+
+  // 🔥 Manejo inteligente de reconexión
+  const handleReconnect = async (reason) => {
+    try {
+      // Prevenir reconexiones múltiples simultáneas
+      if (isLoading) {
+        console.log('⏳ Reconexión ya en progreso...');
+        return;
+      }
+
+      // Límite de intentos
+      if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('❌ Máximo de intentos alcanzado');
+        setIsPlaying(false);
+        isManualPause.current = true;
+        alert('No se pudo mantener la conexión. Por favor, verifica tu señal de internet e intenta de nuevo.');
+        reconnectAttempts.current = 0;
+        return;
+      }
+
+      reconnectAttempts.current++;
+      console.log(`🔄 Intento de reconexión ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS} (razón: ${reason})`);
+
+      setIsLoading(true);
+      
+      // Espera progresiva entre intentos
+      const delay = Math.min(reconnectAttempts.current * 1000, 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Reset completo
+      await TrackPlayer.reset();
+      
+      // Agregar track con headers de keepalive
       await TrackPlayer.add({
         id: 'livestream',
-        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
+        url: STREAM_URL,
         title: 'Mixtape FM',
         artist: 'En Vivo',
         artwork: require('../../assets/images/logo.png'),
         isLiveStream: true,
-        duration: 0, // 🔥 NUEVO - Sin duración = sin barra
-      });
-
-      await TrackPlayer.updateOptions({
-        progressUpdateEventInterval: 0, // 🔥 NUEVO - Quita barra de progreso
-        android: {
-          appKilledPlaybackBehavior: 'ContinuePlayback',
+        duration: 0,
+        headers: {
+          'Connection': 'keep-alive',
+          'Cache-Control': 'no-cache',
+          'User-Agent': 'MixtapeFM/1.0.3',
         },
-        capabilities: [
-          Capability.Play,
-          Capability.Pause,
-        ],
-        compactCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-        ],
-        notificationCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-        ],
       });
-
-    } catch (e) {
-      console.log('Player ya inicializado:', e);
+      
+      await TrackPlayer.play();
+      
+      // Reset contador en reconexión exitosa
+      setTimeout(() => {
+        reconnectAttempts.current = 0;
+      }, 5000);
+      
+      lastPlayingCheck.current = Date.now();
+      console.log('✅ Reconectado exitosamente');
+      
+    } catch (error) {
+      console.error('Error en reconexión:', error);
+      setIsLoading(false);
+      
+      // Reintenta después de delay
+      if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+        setTimeout(() => handleReconnect(reason), 3000);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
-  setupPlayer();
-}, []);
+
+  // Inicializar TrackPlayer
+  useEffect(() => {
+    const setupPlayer = async () => {
+      try {
+        await TrackPlayer.setupPlayer();
+        
+        await TrackPlayer.add({
+          id: 'livestream',
+          url: STREAM_URL,
+          title: 'Mixtape FM',
+          artist: 'En Vivo',
+          artwork: require('../../assets/images/logo.png'),
+          isLiveStream: true,
+          duration: 0,
+          headers: {
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'MixtapeFM/1.0.3',
+          },
+        });
+
+        await TrackPlayer.updateOptions({
+          progressUpdateEventInterval: 0,
+          android: {
+            appKilledPlaybackBehavior: 'ContinuePlayback',
+          },
+          capabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+          compactCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+          notificationCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+          ],
+        });
+
+      } catch (e) {
+        console.log('Player ya inicializado:', e);
+      }
+    };
+    setupPlayer();
+  }, []);
 
   // Actualizar metadata cada 10 segundos
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const response = await axios.get('https://radio.mixtapefm.xyz/api/nowplaying/1');
+        const response = await axios.get(METADATA_URL);
         const data = response.data;
         setMetadata({
           song: data.now_playing?.song?.text || 'Mixtape FM',
@@ -83,44 +278,66 @@ useEffect(() => {
   // Sincronizar estado del reproductor
   useEffect(() => {
     const currentState = playbackState?.state ?? playbackState;
-    setIsPlaying(currentState === State.Playing);
+    const playing = currentState === State.Playing;
+    setIsPlaying(playing);
+    
+    if (playing) {
+      lastPlayingCheck.current = Date.now();
+    }
   }, [playbackState]);
 
+  // 🔥 Toggle con manejo de pausa manual
   async function togglePlayback() {
-  try {
-    setIsLoading(true);
-    const state = await TrackPlayer.getState();
-    
-    if (state === State.Playing) {
-      // 🔥 MATA TODO - No solo pausa
-      await TrackPlayer.reset(); 
-      setIsPlaying(false);
-    } else {
-      // 🔥 RECONECTA FRESH
-      await TrackPlayer.reset(); // Limpia cualquier buffer residual
+    try {
+      setIsLoading(true);
+      const state = await TrackPlayer.getState();
       
-      await TrackPlayer.add({
-        id: 'livestream',
-        url: 'https://radio.mixtapefm.xyz/radio/8000/radio.acc+',
-        title: 'Mixtape FM',
-        artist: 'En Vivo',
-        artwork: require('../../assets/images/logo.png'),
-        isLiveStream: true,
-        duration: 0,
-      });
-      
-      await TrackPlayer.play();
+      if (state === State.Playing) {
+        // Pausa manual
+        isManualPause.current = true;
+        await TrackPlayer.reset(); 
+        setIsPlaying(false);
+        reconnectAttempts.current = 0;
+        console.log('⏸️ Pausado manualmente');
+      } else {
+        // Play manual
+        isManualPause.current = false;
+        reconnectAttempts.current = 0;
+        
+        await TrackPlayer.reset();
+        
+        await TrackPlayer.add({
+          id: 'livestream',
+          url: STREAM_URL,
+          title: 'Mixtape FM',
+          artist: 'En Vivo',
+          artwork: require('../../assets/images/logo.png'),
+          isLiveStream: true,
+          duration: 0,
+          headers: {
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'MixtapeFM/1.0.3',
+          },
+        });
+        
+        await TrackPlayer.play();
+        lastPlayingCheck.current = Date.now();
+        console.log('▶️ Reproduciendo');
+      }
+    } catch (error) {
+      console.error('Error al reproducir:', error);
+      alert('No se pudo conectar con la radio. Verifica tu conexión a internet.');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error al reproducir:', error);
-    alert('No se pudo conectar con la radio');
-  } finally {
-    setIsLoading(false);
   }
-}
 
   return (
     <View style={styles.container}>
+      {/* KeepAwake cuando está reproduciendo */}
+      {isPlaying && <KeepAwake />}
+      
       <View style={styles.logoContainer}>
         <Image
           source={require('../../assets/images/logo.png')}
@@ -132,7 +349,14 @@ useEffect(() => {
       <Text style={styles.radioName}>Mixtape FM</Text>
       <Text style={styles.tagline}>De los cassette al streaming</Text>
 
-      {/* Metadata reemplaza al status */}
+      {/* Indicador de conexión */}
+      {!isConnected && (
+        <View style={styles.warningContainer}>
+          <Ionicons name="warning" size={16} color="#ff9800" />
+          <Text style={styles.warningText}>Sin conexión a internet</Text>
+        </View>
+      )}
+
       <View style={styles.metadataContainer}>
         <Text style={styles.songText}>
           {isPlaying ? metadata.song : 'Presiona Play para escuchar'}
@@ -142,7 +366,7 @@ useEffect(() => {
       <TouchableOpacity
         style={[styles.playButton, isPlaying && styles.playButtonActive]}
         onPress={togglePlayback}
-        disabled={isLoading}
+        disabled={isLoading || !isConnected}
       >
         {isLoading ? (
           <ActivityIndicator size="large" color="#fff" />
@@ -187,6 +411,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffffff',
     marginBottom: 25,
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginBottom: 10,
+    gap: 6,
+  },
+  warningText: {
+    color: '#ff9800',
+    fontSize: 12,
+    fontWeight: '600',
   },
   metadataContainer: {
     alignItems: 'center',
