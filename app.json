@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mixtape FM",
     "slug": "MiRadio",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
