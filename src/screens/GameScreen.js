@@ -14,9 +14,9 @@ import { ALBUMS_CATALOG, RARITIES } from '../data/albumesData';
 import PuzzleBoard from '../components/PuzzleBoard';
 
 // Ajusta las rutas según el nombre exacto de tus imágenes de íconos en assets
-import iconPlay from '../../assets/game/icon_play.png';
-import iconCollection from '../../assets/game/icon_collection.png';
-import iconShop from '../../assets/game/icon_shop.png';
+import iconPlay from '../../assets/game/Play.png';
+import iconCollection from '../../assets/game/colecciones.png';
+import iconShop from '../../assets/game/Shop.png';
 
 export default function GameScreen() {
   const [currentTab, setCurrentTab] = useState('MENU'); // 'MENU', 'PLAY', 'COLLECTION', 'SHOP'
