@@ -389,28 +389,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#23058fff',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+    justifyContent: 'space-between',
+    paddingVertical: 12,       // ← Reducido ligeramente para evitar desbordes
     paddingHorizontal: 20,
   },
   logoContainer: {
-    marginBottom: 15,
-    marginTop: 20,
+    marginBottom: 5,
+    marginTop: 10,             // ← Ajustado para no empujar hacia abajo
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: 120,                // ← Reducido de 140 a 120 para ganar espacio vertical
+    height: 120,
   },
   radioName: {
-    fontSize: 32,
+    fontSize: 28,              // ← Reducido de 32 a 28
     fontWeight: 'bold',
-    color: '#ffffffff',
-    marginBottom: 8,
+    color: '#ffffff',
+    marginBottom: 4,
   },
   tagline: {
-    fontSize: 16,
-    color: '#ffffffff',
-    marginBottom: 25,
+    fontSize: 14,
+    color: '#ffffff',
+    marginBottom: 15,
   },
   warningContainer: {
     flexDirection: 'row',
@@ -429,25 +429,25 @@ const styles = StyleSheet.create({
   },
   metadataContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    height: 60,
+    marginBottom: 10,
+    height: 50,
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
   },
   songText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#fff',
     textAlign: 'center',
     fontWeight: '500',
   },
   playButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 90,                  // ← Ligeramente más compacto
+    height: 90,
+    borderRadius: 45,
     backgroundColor: '#0c0000ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 50,
+    marginBottom: 15,           // ← Cambiado de 50 a 15 para dejar respirar a SocialButtons
     elevation: 5,
   },
   playButtonActive: {

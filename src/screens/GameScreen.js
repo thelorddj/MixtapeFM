@@ -7,52 +7,111 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 
-// IMPORTANTE: Asegúrate de tener estas imágenes en tu carpeta assets/game/
-// Cambia las rutas según el nombre y formato de tus archivos reales
-import iconPlay from '../../assets/game/Play.png';
-import iconCollection from '../../assets/game/Colecciones.png';
-import iconShop from '../../assets/game/Shop.png';
+import { ALBUMS_CATALOG, RARITIES } from '../data/albumesData';
+import PuzzleBoard from '../components/PuzzleBoard';
+
+// Ajusta las rutas según el nombre exacto de tus imágenes de íconos en assets
+import iconPlay from '../../assets/game/icon_play.png';
+import iconCollection from '../../assets/game/icon_collection.png';
+import iconShop from '../../assets/game/icon_shop.png';
 
 export default function GameScreen() {
-  // Estado para saber en qué sección interna del juego estamos
-  // Valores posibles: 'MENU', 'PLAY', 'COLLECTION', 'SHOP'
-  const [currentTab, setCurrentTab] = useState('MENU');
+  const [currentTab, setCurrentTab] = useState('MENU'); // 'MENU', 'PLAY', 'COLLECTION', 'SHOP'
+  const [currentAlbum, setCurrentAlbum] = useState(null);
+  const [currentRarity, setCurrentRarity] = useState(null);
 
-  // Renders dinámicos según la pestaña activa
+  // Función Gacha: Selecciona rareza según probabilidades y elige un álbum al azar
+  const startNewGame = () => {
+    const random = Math.floor(Math.random() * 100) + 1; // Número entre 1 y 100
+    let selectedRarityKey = 'NORMAL';
+
+    if (random <= RARITIES.LEYENDA.dropChance) {
+      selectedRarityKey = 'LEYENDA'; // 5%
+    } else if (random <= RARITIES.LEYENDA.dropChance + RARITIES.EPICO.dropChance) {
+      selectedRarityKey = 'EPICO'; // 10%
+    } else if (
+      random <=
+      RARITIES.LEYENDA.dropChance + RARITIES.EPICO.dropChance + RARITIES.RARO.dropChance
+    ) {
+      selectedRarityKey = 'RARO'; // 25%
+    } else {
+      selectedRarityKey = 'NORMAL'; // 60%
+    }
+
+    const rarityConfig = RARITIES[selectedRarityKey];
+    
+    // Filtrar catálogo por la rareza obtenida
+    const availableAlbums = ALBUMS_CATALOG.filter(
+      (album) => album.rarity === rarityConfig.id
+    );
+
+    // Si no hay álbumes en esa rareza, tomamos uno al azar del catálogo completo como respaldo
+    const albumToPlay =
+      availableAlbums.length > 0
+        ? availableAlbums[Math.floor(Math.random() * availableAlbums.length)]
+        : ALBUMS_CATALOG[Math.floor(Math.random() * ALBUMS_CATALOG.length)];
+
+    setCurrentRarity(rarityConfig);
+    setCurrentAlbum(albumToPlay);
+    setCurrentTab('PLAY');
+  };
+
+  // Manejadores del resultado de la partida
+  const handleWin = () => {
+    Alert.alert(
+      '¡FELICIDADES!',
+      `Has completado el puzzle de "${currentAlbum.title}". ¡Disco añadido a tu colección!`,
+      [{ text: 'Aceptar', onPress: () => setCurrentTab('MENU') }]
+    );
+  };
+
+  const handleGameOver = () => {
+    Alert.alert(
+      '¡TIEMPO AGOTADO!',
+      'Se acabó el tiempo de 60 segundos. ¡Inténtalo de nuevo!',
+      [{ text: 'Aceptar', onPress: () => setCurrentTab('MENU') }]
+    );
+  };
+
   const renderContent = () => {
     switch (currentTab) {
       case 'PLAY':
-        return (
+        return currentAlbum && currentRarity ? (
           <View style={styles.centerContent}>
-            <Text style={styles.retroText}>[ TABLERO DE JUEGO ]</Text>
-            {/* Aquí montaremos el componente PuzzleBoard.js */}
+            <PuzzleBoard
+              album={currentAlbum}
+              rarityConfig={currentRarity}
+              onWin={handleWin}
+              onGameOver={handleGameOver}
+            />
           </View>
-        );
+        ) : null;
+
       case 'COLLECTION':
         return (
           <View style={styles.centerContent}>
             <Text style={styles.retroText}>[ MI COLECCIÓN ]</Text>
-            {/* Aquí montaremos el componente CollectionView.js */}
+            <Text style={styles.subText}>Aquí aparecerán tus discos desbloqueados</Text>
           </View>
         );
+
       case 'SHOP':
         return (
           <View style={styles.centerContent}>
             <Text style={styles.retroText}>[ TIENDA DE ITEMS ]</Text>
-            {/* Aquí montaremos la tienda de comodines */}
+            <Text style={styles.subText}>Próximamente: Rebobinadores de tiempo</Text>
           </View>
         );
+
       case 'MENU':
       default:
         return (
           <View style={styles.centerContent}>
-            <Text style={styles.titleText}>PUZZLE BEAT 16-BIT</Text>
-            <TouchableOpacity
-              style={styles.bigPlayButton}
-              onPress={() => setCurrentTab('PLAY')}
-            >
+            <Text style={styles.titleText}>CASSETTE RIDERS</Text>
+            <TouchableOpacity style={styles.bigPlayButton} onPress={startNewGame}>
               <Text style={styles.playButtonText}>¡JUGAR!</Text>
             </TouchableOpacity>
           </View>
@@ -62,16 +121,12 @@ export default function GameScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Área donde se carga la vista seleccionada */}
       <View style={styles.screenBody}>{renderContent()}</View>
 
       {/* BARRA INFERIOR INTERNA DEL JUEGO */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={[
-            styles.tabButton,
-            currentTab === 'MENU' && styles.tabButtonActive,
-          ]}
+          style={[styles.tabButton, currentTab === 'MENU' && styles.tabButtonActive]}
           onPress={() => setCurrentTab('MENU')}
         >
           <Image source={iconPlay} style={styles.iconStyle} />
@@ -90,10 +145,7 @@ export default function GameScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.tabButton,
-            currentTab === 'SHOP' && styles.tabButtonActive,
-          ]}
+          style={[styles.tabButton, currentTab === 'SHOP' && styles.tabButtonActive]}
           onPress={() => setCurrentTab('SHOP')}
         >
           <Image source={iconShop} style={styles.iconStyle} />
@@ -107,7 +159,7 @@ export default function GameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212', // Fondo oscuro retro
+    backgroundColor: '#121212',
   },
   screenBody: {
     flex: 1,
@@ -116,7 +168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 15,
   },
   titleText: {
     fontSize: 26,
@@ -129,6 +181,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  subText: {
+    fontSize: 14,
+    color: '#AAA',
+    marginTop: 10,
   },
   bigPlayButton: {
     backgroundColor: '#e91e63',
@@ -143,10 +200,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
   },
-  /* ESTILOS DE LA BARRA INFERIOR INTERNA */
   bottomBar: {
     flexDirection: 'row',
-    height: 70,
+    height: 65,
     backgroundColor: '#1a1a1a',
     borderTopWidth: 2,
     borderTopColor: '#e91e63',
@@ -163,8 +219,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#FFBE0B',
   },
   iconStyle: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     resizeMode: 'contain',
   },
   tabLabel: {
