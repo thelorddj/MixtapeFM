@@ -10,8 +10,6 @@ import {
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-// Forzamos un tamaño de tablero exacto y cuadrado
-const BOARD_SIZE = Math.floor(SCREEN_WIDTH * 0.82);
 
 export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) {
   const [pieces, setPieces] = useState([]);
@@ -22,9 +20,14 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
   const cols = rarityConfig.gridSize.cols;
   const totalPieces = rows * cols;
 
-  // Calculamos el tamaño exacto e idéntico para cada celda cuadrada
-  const tileSize = Math.floor(BOARD_SIZE / cols);
-  const actualBoardSize = tileSize * cols; // Ajuste milimétrico sin decimales
+  // Ancho máximo disponible (80% del ancho de pantalla)
+  const MAX_WIDTH = Math.floor(SCREEN_WIDTH * 0.80);
+  
+  // Forzamos un tamaño de celda entero y exacto sin decimales
+  const tileSize = Math.floor(MAX_WIDTH / cols);
+  
+  // El ancho del tablero es EXACTAMENTE el número de columnas por el tamaño de celda
+  const boardSize = tileSize * cols;
 
   useEffect(() => {
     initBoard();
@@ -95,7 +98,7 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
   return (
     <View style={styles.container}>
       {/* HEADER */}
-      <View style={[styles.headerInfo, { width: actualBoardSize }]}>
+      <View style={[styles.headerInfo, { width: boardSize }]}>
         <Text style={[styles.rarityLabel, { color: rarityConfig.color }]}>
           {rarityConfig.label.toUpperCase()} ({totalPieces} Pzs)
         </Text>
@@ -104,11 +107,11 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
         </Text>
       </View>
 
-      {/* CONTENEDOR DEL TABLERO CUADRADO PERFECTO */}
+      {/* CONTENEDOR EXACTO DEL TABLERO */}
       <View
         style={[
           styles.boardContainer,
-          { width: actualBoardSize, height: actualBoardSize },
+          { width: boardSize, height: boardSize },
         ]}
       >
         {pieces.map((piece, currentIndex) => {
@@ -129,25 +132,22 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
                 },
               ]}
             >
-              {/* MÁSCARA CROP CON DIMENSIONES EXACTAS */}
-              <View style={styles.cropWindow}>
+              <View style={{ width: tileSize, height: tileSize, overflow: 'hidden' }}>
                 {imageSource && (
                   <Image
                     source={imageSource}
                     style={{
-                      width: actualBoardSize,
-                      height: actualBoardSize,
-                      transform: [
-                        { translateX: -originalCol * tileSize },
-                        { translateY: -originalRow * tileSize },
-                      ],
+                      width: boardSize,
+                      height: boardSize,
+                      position: 'absolute',
+                      top: -originalRow * tileSize,
+                      left: -originalCol * tileSize,
                     }}
                     resizeMode="cover"
                   />
                 )}
               </View>
 
-              {/* OVERLAY NEÓN AL SELECCIONAR */}
               {isSelected && <View style={styles.selectedOverlay} />}
             </TouchableOpacity>
           );
@@ -187,14 +187,8 @@ const styles = StyleSheet.create({
   pieceBox: {
     backgroundColor: '#111',
     borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.4)',
-    overflow: 'hidden',
+    borderColor: 'rgba(0,0,0,0.5)',
     position: 'relative',
-  },
-  cropWindow: {
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
   },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
