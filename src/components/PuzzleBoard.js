@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const MAX_BOARD_SIZE = Math.floor(SCREEN_WIDTH * 0.82);
 
 export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) {
   const [pieces, setPieces] = useState([]);
@@ -20,14 +21,10 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
   const cols = rarityConfig.gridSize.cols;
   const totalPieces = rows * cols;
 
-  // Ancho máximo disponible (80% del ancho de pantalla)
-  const MAX_WIDTH = Math.floor(SCREEN_WIDTH * 0.80);
-  
-  // Forzamos un tamaño de celda entero y exacto sin decimales
-  const tileSize = Math.floor(MAX_WIDTH / cols);
-  
-  // El ancho del tablero es EXACTAMENTE el número de columnas por el tamaño de celda
-  const boardSize = tileSize * cols;
+  // Calculamos el tamaño de celda y ajustamos el tablero exacto al ancho de las columnas
+  const tileSize = Math.floor(MAX_BOARD_SIZE / cols);
+  const boardWidth = tileSize * cols;
+  const boardHeight = tileSize * rows;
 
   useEffect(() => {
     initBoard();
@@ -95,10 +92,70 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
     ? { uri: album.pixelCover }
     : album.pixelCover;
 
+  // Construcción de filas estrictas para evitar saltos de línea indeseados
+  const renderGridRows = () => {
+    let gridRows = [];
+
+    for (let r = 0; r < rows; r++) {
+      let rowPieces = [];
+      for (let c = 0; c < cols; c++) {
+        const currentIndex = r * cols + c;
+        const piece = pieces[currentIndex];
+
+        if (!piece) continue;
+
+        const originalRow = Math.floor(piece.correctIndex / cols);
+        const originalCol = piece.correctIndex % cols;
+        const isSelected = selectedPiece === currentIndex;
+
+        rowPieces.push(
+          <TouchableOpacity
+            key={currentIndex}
+            activeOpacity={0.8}
+            onPress={() => handlePiecePress(currentIndex)}
+            style={[
+              styles.pieceBox,
+              {
+                width: tileSize,
+                height: tileSize,
+              },
+            ]}
+          >
+            <View style={{ width: tileSize, height: tileSize, overflow: 'hidden' }}>
+              {imageSource && (
+                <Image
+                  source={imageSource}
+                  style={{
+                    width: boardWidth,
+                    height: boardHeight,
+                    position: 'absolute',
+                    top: -originalRow * tileSize,
+                    left: -originalCol * tileSize,
+                  }}
+                  resizeMode="stretch"
+                />
+              )}
+            </View>
+
+            {isSelected && <View style={styles.selectedOverlay} />}
+          </TouchableOpacity>
+        );
+      }
+
+      gridRows.push(
+        <View key={r} style={[styles.gridRow, { height: tileSize }]}>
+          {rowPieces}
+        </View>
+      );
+    }
+
+    return gridRows;
+  };
+
   return (
     <View style={styles.container}>
       {/* HEADER */}
-      <View style={[styles.headerInfo, { width: boardSize }]}>
+      <View style={[styles.headerInfo, { width: boardWidth }]}>
         <Text style={[styles.rarityLabel, { color: rarityConfig.color }]}>
           {rarityConfig.label.toUpperCase()} ({totalPieces} Pzs)
         </Text>
@@ -107,51 +164,14 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
         </Text>
       </View>
 
-      {/* CONTENEDOR EXACTO DEL TABLERO */}
+      {/* TABLERO RÍGIDO ESTRUCTURADO EN FILAS */}
       <View
         style={[
-          styles.boardContainer,
-          { width: boardSize, height: boardSize },
+          styles.boardWrapper,
+          { width: boardWidth + 4, height: boardHeight + 4 },
         ]}
       >
-        {pieces.map((piece, currentIndex) => {
-          const originalRow = Math.floor(piece.correctIndex / cols);
-          const originalCol = piece.correctIndex % cols;
-          const isSelected = selectedPiece === currentIndex;
-
-          return (
-            <TouchableOpacity
-              key={currentIndex}
-              activeOpacity={0.8}
-              onPress={() => handlePiecePress(currentIndex)}
-              style={[
-                styles.pieceBox,
-                {
-                  width: tileSize,
-                  height: tileSize,
-                },
-              ]}
-            >
-              <View style={{ width: tileSize, height: tileSize, overflow: 'hidden' }}>
-                {imageSource && (
-                  <Image
-                    source={imageSource}
-                    style={{
-                      width: boardSize,
-                      height: boardSize,
-                      position: 'absolute',
-                      top: -originalRow * tileSize,
-                      left: -originalCol * tileSize,
-                    }}
-                    resizeMode="cover"
-                  />
-                )}
-              </View>
-
-              {isSelected && <View style={styles.selectedOverlay} />}
-            </TouchableOpacity>
-          );
-        })}
+        {renderGridRows()}
       </View>
 
       {/* METADATA */}
@@ -176,13 +196,15 @@ const styles = StyleSheet.create({
   rarityLabel: { fontSize: 14, fontWeight: 'bold' },
   timerText: { fontSize: 14, fontWeight: 'bold', color: '#FFF' },
   timerDanger: { color: '#FF0055' },
-  boardContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: '#000',
+  boardWrapper: {
     borderWidth: 2,
     borderColor: '#FFF',
+    backgroundColor: '#000',
     overflow: 'hidden',
+  },
+  gridRow: {
+    flexDirection: 'row',
+    width: '100%',
   },
   pieceBox: {
     backgroundColor: '#111',
