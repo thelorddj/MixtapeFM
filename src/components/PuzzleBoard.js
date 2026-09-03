@@ -10,27 +10,24 @@ import {
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BOARD_SIZE = SCREEN_WIDTH * 0.85; // Ancho del tablero dinámico (85% de la pantalla)
+const BOARD_SIZE = SCREEN_WIDTH * 0.85;
 
 export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) {
   const [pieces, setPieces] = useState([]);
   const [selectedPiece, setSelectedPiece] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(60); // 60 segundos base
+  const [timeLeft, setTimeLeft] = useState(rarityConfig.timeLimit || 60);
 
-  const rows = rarityConfig.gridRows;
-  const cols = rarityConfig.gridCols;
-  const totalPieces = rarityConfig.totalPieces;
+  const rows = rarityConfig.gridSize.rows;
+  const cols = rarityConfig.gridSize.cols;
+  const totalPieces = rows * cols;
 
-  // Ancho y alto de cada pieza individual en px
   const pieceWidth = BOARD_SIZE / cols;
   const pieceHeight = BOARD_SIZE / rows;
 
-  // 1. Inicializar y mezclar el tablero
   useEffect(() => {
     initBoard();
   }, [album]);
 
-  // 2. Temporizador de 60 segundos
   useEffect(() => {
     if (timeLeft <= 0) {
       onGameOver && onGameOver();
@@ -43,17 +40,15 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
     return () => clearInterval(timer);
   }, [timeLeft]);
 
-  // Función para crear las piezas ordenadas y luego desordenarlas
   const initBoard = () => {
     let initialPieces = [];
     for (let i = 0; i < totalPieces; i++) {
       initialPieces.push({
         id: i,
-        correctIndex: i, // Posición correcta que le corresponde en la imagen completa
+        correctIndex: i,
       });
     }
 
-    // Mezcla aleatoria (Fisher-Yates Shuffle)
     let shuffled = [...initialPieces];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -64,13 +59,10 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
     setSelectedPiece(null);
   };
 
-  // Lógica para seleccionar y realizar el intercambio (Swap)
   const handlePiecePress = (index) => {
     if (selectedPiece === null) {
-      // Primera pieza seleccionada
       setSelectedPiece(index);
     } else {
-      // Segunda pieza seleccionada: realizamos el intercambio
       let updatedPieces = [...pieces];
       const temp = updatedPieces[selectedPiece];
       updatedPieces[selectedPiece] = updatedPieces[index];
@@ -79,12 +71,10 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
       setPieces(updatedPieces);
       setSelectedPiece(null);
 
-      // Verificar si el jugador ya completó el rompecabezas
       checkVictory(updatedPieces);
     }
   };
 
-  // Comprobar si cada pieza está en su índice correcto
   const checkVictory = (currentPieces) => {
     const isCompleted = currentPieces.every(
       (piece, index) => piece.correctIndex === index
@@ -94,9 +84,13 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
     }
   };
 
+  // Soporta requre local (ImageSource) o URL
+  const imageSource = typeof album.pixelCover === 'string'
+    ? { uri: album.pixelCover }
+    : album.pixelCover;
+
   return (
     <View style={styles.container}>
-      {/* HEADER DE INFORMACIÓN DEL JUEGO */}
       <View style={styles.headerInfo}>
         <Text style={[styles.rarityLabel, { color: rarityConfig.color }]}>
           {rarityConfig.label.toUpperCase()} ({totalPieces} Piezas)
@@ -104,14 +98,13 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
         <Text
           style={[
             styles.timerText,
-            timeLeft <= 10 && styles.timerDanger, // Color rojo si quedan menos de 10 seg
+            timeLeft <= 10 && styles.timerDanger,
           ]}
         >
           Tiempo: {timeLeft}s
         </Text>
       </View>
 
-      {/* TABLERO DE PIEZAS GRID */}
       <View
         style={[
           styles.boardContainer,
@@ -119,10 +112,8 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
         ]}
       >
         {pieces.map((piece, currentIndex) => {
-          // Calculamos las coordenadas originales de esta pieza para el recálculo visual
           const originalRow = Math.floor(piece.correctIndex / cols);
           const originalCol = piece.correctIndex % cols;
-
           const isSelected = selectedPiece === currentIndex;
 
           return (
@@ -140,7 +131,6 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
                 },
               ]}
             >
-              {/* Recorte preciso de la imagen mediante posicionamiento dinámico */}
               <View
                 style={{
                   width: pieceWidth,
@@ -148,23 +138,24 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
                   overflow: 'hidden',
                 }}
               >
-                <Image
-                  source={{ uri: album.pixelImage }}
-                  style={{
-                    width: BOARD_SIZE,
-                    height: BOARD_SIZE,
-                    marginLeft: -originalCol * pieceWidth,
-                    marginTop: -originalRow * pieceHeight,
-                  }}
-                  resizeMode="stretch"
-                />
+                {imageSource && (
+                  <Image
+                    source={imageSource}
+                    style={{
+                      width: BOARD_SIZE,
+                      height: BOARD_SIZE,
+                      marginLeft: -originalCol * pieceWidth,
+                      marginTop: -originalRow * pieceHeight,
+                    }}
+                    resizeMode="stretch"
+                  />
+                )}
               </View>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* TITULO Y ARTISTA EN PARTIDA */}
       <View style={styles.albumMeta}>
         <Text style={styles.albumTitle}>{album.title}</Text>
         <Text style={styles.artistName}>{album.artist}</Text>
@@ -174,28 +165,16 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  container: { alignItems: 'center', justifyContent: 'center' },
   headerInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: BOARD_SIZE,
     marginBottom: 15,
   },
-  rarityLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  timerText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  timerDanger: {
-    color: '#FF0055',
-  },
+  rarityLabel: { fontSize: 16, fontWeight: 'bold' },
+  timerText: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  timerDanger: { color: '#FF0055' },
   boardContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -208,17 +187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#222',
   },
-  albumMeta: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  albumTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  artistName: {
-    color: '#AAA',
-    fontSize: 14,
-  },
+  albumMeta: { marginTop: 15, alignItems: 'center' },
+  albumTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  artistName: { color: '#AAA', fontSize: 14 },
 });
