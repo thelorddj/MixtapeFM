@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BOARD_SIZE = SCREEN_WIDTH * 0.85;
+const MAX_BOARD_WIDTH = SCREEN_WIDTH * 0.85; // Ancho máximo del área de juego
 
 export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) {
   const [pieces, setPieces] = useState([]);
@@ -21,8 +21,13 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
   const cols = rarityConfig.gridSize.cols;
   const totalPieces = rows * cols;
 
-  const pieceWidth = BOARD_SIZE / cols;
-  const pieceHeight = BOARD_SIZE / rows;
+  // Calculamos el tamaño exacto por celda para mantener la grilla perfecta
+  const pieceWidth = MAX_BOARD_WIDTH / cols;
+  const pieceHeight = MAX_BOARD_WIDTH / rows;
+
+  // Dimensiones totales del contenedor según la grilla
+  const boardWidth = pieceWidth * cols;
+  const boardHeight = pieceHeight * rows;
 
   useEffect(() => {
     initBoard();
@@ -61,8 +66,13 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
 
   const handlePiecePress = (index) => {
     if (selectedPiece === null) {
+      // Primera selección: ilumina la pieza
       setSelectedPiece(index);
+    } else if (selectedPiece === index) {
+      // Si toca la misma pieza, la deselecciona
+      setSelectedPiece(null);
     } else {
+      // Segunda selección: hace el intercambio
       let updatedPieces = [...pieces];
       const temp = updatedPieces[selectedPiece];
       updatedPieces[selectedPiece] = updatedPieces[index];
@@ -84,16 +94,16 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
     }
   };
 
-  // Soporta requre local (ImageSource) o URL
   const imageSource = typeof album.pixelCover === 'string'
     ? { uri: album.pixelCover }
     : album.pixelCover;
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerInfo}>
+      {/* HEADER DE INFORMACIÓN */}
+      <View style={[styles.headerInfo, { width: boardWidth }]}>
         <Text style={[styles.rarityLabel, { color: rarityConfig.color }]}>
-          {rarityConfig.label.toUpperCase()} ({totalPieces} Piezas)
+          {rarityConfig.label.toUpperCase()} ({totalPieces} Pzs)
         </Text>
         <Text
           style={[
@@ -105,10 +115,11 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
         </Text>
       </View>
 
+      {/* TABLERO DE PIEZAS */}
       <View
         style={[
           styles.boardContainer,
-          { width: BOARD_SIZE, height: BOARD_SIZE },
+          { width: boardWidth, height: boardHeight },
         ]}
       >
         {pieces.map((piece, currentIndex) => {
@@ -119,15 +130,16 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
           return (
             <TouchableOpacity
               key={currentIndex}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               onPress={() => handlePiecePress(currentIndex)}
               style={[
                 styles.pieceBox,
                 {
                   width: pieceWidth,
                   height: pieceHeight,
-                  borderColor: isSelected ? '#FFBE0B' : '#121212',
-                  borderWidth: isSelected ? 2 : 1,
+                  borderColor: isSelected ? '#FFBE0B' : '#000',
+                  borderWidth: isSelected ? 3 : 1,
+                  zIndex: isSelected ? 10 : 1,
                 },
               ]}
             >
@@ -136,14 +148,15 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
                   width: pieceWidth,
                   height: pieceHeight,
                   overflow: 'hidden',
+                  opacity: isSelected ? 0.65 : 1, // Feedback visual de opacidad
                 }}
               >
                 {imageSource && (
                   <Image
                     source={imageSource}
                     style={{
-                      width: BOARD_SIZE,
-                      height: BOARD_SIZE,
+                      width: boardWidth,
+                      height: boardHeight,
                       marginLeft: -originalCol * pieceWidth,
                       marginTop: -originalRow * pieceHeight,
                     }}
@@ -151,11 +164,15 @@ export default function PuzzleBoard({ album, rarityConfig, onWin, onGameOver }) 
                   />
                 )}
               </View>
+
+              {/* INDICADOR VISUAL DORADO CUANDO ESTÁ SELECCIONADA */}
+              {isSelected && <View style={styles.selectedOverlay} />}
             </TouchableOpacity>
           );
         })}
       </View>
 
+      {/* METADATA DEL ÁLBUM */}
       <View style={styles.albumMeta}>
         <Text style={styles.albumTitle}>{album.title}</Text>
         <Text style={styles.artistName}>{album.artist}</Text>
@@ -169,25 +186,31 @@ const styles = StyleSheet.create({
   headerInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: BOARD_SIZE,
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  rarityLabel: { fontSize: 16, fontWeight: 'bold' },
-  timerText: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
+  rarityLabel: { fontSize: 15, fontWeight: 'bold' },
+  timerText: { fontSize: 15, fontWeight: 'bold', color: '#FFF' },
   timerDanger: { color: '#FF0055' },
   boardContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     backgroundColor: '#000',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#FFF',
   },
   pieceBox: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#222',
+    backgroundColor: '#111',
+    position: 'relative',
   },
-  albumMeta: { marginTop: 15, alignItems: 'center' },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 190, 11, 0.3)', // Resplandor amarillo/dorado
+    borderWidth: 2,
+    borderColor: '#FFBE0B',
+  },
+  albumMeta: { marginTop: 12, alignItems: 'center' },
   albumTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  artistName: { color: '#AAA', fontSize: 14 },
+  artistName: { color: '#AAA', fontSize: 13 },
 });
