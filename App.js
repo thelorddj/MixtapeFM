@@ -29,8 +29,9 @@ export default function App() {
               iconName = focused ? 'radio' : 'radio-outline';
             } else if (route.name === 'Programación') {
               iconName = focused ? 'calendar' : 'calendar-outline';
-            } else if (route.name === 'Minijuego') {
-              // ← 2. Icono para la pestaña del minijuego
+            } else if (route.name === 'Cassette Riders') {
+              // ← 2. Icono para la pestaña del minijuego (el nombre real
+              // de la pantalla es "Cassette Riders", no "Minijuego")
               iconName = focused ? 'game-controller' : 'game-controller-outline';
             }
 

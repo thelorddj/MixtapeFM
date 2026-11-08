@@ -6,11 +6,6 @@
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mixtapeoficialmx.app"
@@ -22,7 +17,6 @@
       },
       "package": "com.mixtapeoficialmx.app",
       "versionCode":3,
-      "targetSDKVersion": 35,
       "permissions": [
         "INTERNET",
         "FOREGROUND_SERVICE",
