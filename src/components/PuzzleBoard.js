@@ -1,7 +1,7 @@
 // src/components/PuzzleBoard.js
-// Beta v1.1 — 2026-11-07
-// Fases: PREVIEW (3s) -> PLAY.
-// Fix: checkVictory garantizado con pequeño delay para render visual de la última pieza.
+// Beta v1.2 — 2026-11-07
+// Incluye: Flash blanco inicial, Vista previa de 3s, Scramble fluido y 
+// Secuencia de Victoria (Texto "COMPLETADO" + Explosión/Flash a Carátula HD).
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Animated,
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -28,11 +29,16 @@ export default function PuzzleBoard({
 }) {
   const [pieces, setPieces] = useState([]);
   const [selectedPiece, setSelectedPiece] = useState(null);
-  const [phase, setPhase] = useState('PREVIEW');
+  const [phase, setPhase] = useState('PREVIEW'); // 'PREVIEW' | 'PLAY' | 'VICTORY'
   const [previewLeft, setPreviewLeft] = useState(PREVIEW_SECONDS);
   const [timeLeft, setTimeLeft] = useState(rarityConfig.timeLimit || 60);
   const [frozenLeft, setFrozenLeft] = useState(0);
   const finishedRef = useRef(false);
+
+  // Animaciones Nativas
+  const flashAnim = useRef(new Animated.Value(1)).current; // Inicia en flash blanco
+  const victoryTextAnim = useRef(new Animated.Value(0)).current;
+  const explosionAnim = useRef(new Animated.Value(0)).current;
 
   const rows = rarityConfig.gridSize.rows;
   const cols = rarityConfig.gridSize.cols;
@@ -42,7 +48,7 @@ export default function PuzzleBoard({
   const boardWidth = tileSize * cols;
   const boardHeight = tileSize * rows;
 
-  // Al cambiar de álbum: reiniciar todo y empezar en PREVIEW.
+  // Al cargar / cambiar álbum: Transición Flash de inicio
   useEffect(() => {
     finishedRef.current = false;
     setSelectedPiece(null);
@@ -51,21 +57,35 @@ export default function PuzzleBoard({
     setPhase('PREVIEW');
     setPreviewLeft(PREVIEW_SECONDS);
     initBoard();
+
+    // Efecto Flash Inicial (Fade out de blanco)
+    flashAnim.setValue(1);
+    Animated.timing(flashAnim, {
+      toValue: 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album]);
 
-  // Cuenta atrás de la vista previa. Cuando llega a 0, empieza el juego.
+  // Temporizador de PREVIEW (3 segundos)
   useEffect(() => {
     if (phase !== 'PREVIEW') return undefined;
     if (previewLeft <= 0) {
-      setPhase('PLAY');
+      // Flash de transición al Scramble
+      Animated.sequence([
+        Animated.timing(flashAnim, { toValue: 0.8, duration: 150, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]).start(() => {
+        setPhase('PLAY');
+      });
       return undefined;
     }
     const timer = setTimeout(() => setPreviewLeft((p) => p - 1), 1000);
     return () => clearTimeout(timer);
   }, [phase, previewLeft]);
 
-  // Temporizador del juego: solo corre en PLAY y solo si no está congelado.
+  // Temporizador principal (solo en PLAY)
   useEffect(() => {
     if (phase !== 'PLAY' || finishedRef.current) return undefined;
     const timer = setInterval(() => {
@@ -78,7 +98,7 @@ export default function PuzzleBoard({
     return () => clearInterval(timer);
   }, [phase, frozenLeft]);
 
-  // Tiempo agotado: se avisa una sola vez.
+  // Game Over por tiempo
   useEffect(() => {
     if (phase === 'PLAY' && timeLeft <= 0 && !finishedRef.current) {
       finishedRef.current = true;
@@ -123,20 +143,39 @@ export default function PuzzleBoard({
     }
   };
 
+  // --- Lógica y Secuencia de Animación de Victoria ---
   const checkVictory = (currentPieces) => {
     const isCompleted = currentPieces.every(
       (piece, index) => piece.correctIndex === index
     );
+
     if (isCompleted && !finishedRef.current) {
       finishedRef.current = true;
-      // Pequeña pausa para permitir que React Native pinte la última pieza en su lugar
-      setTimeout(() => {
-        onWin && onWin();
-      }, 150);
+
+      // 1. Cambiar a fase Victoria
+      setPhase('VICTORY');
+
+      // 2. Mostrar Texto "COMPLETADO" con Zoom y Destello
+      Animated.timing(victoryTextAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        // 3. Esperar 1.2 segundos y lanzar "Explosión / Flash Blanco"
+        setTimeout(() => {
+          Animated.timing(explosionAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            // 4. Disparar Callback de Win hacia el contenedor principal
+            onWin && onWin();
+          });
+        }, 1200);
+      });
     }
   };
 
-  // --- Potenciadores ---
   const usePowerUp = (id) => {
     if (phase !== 'PLAY' || finishedRef.current) return;
     if (!powerUps || (powerUps[id] || 0) <= 0) return;
@@ -234,6 +273,17 @@ export default function PuzzleBoard({
 
   return (
     <View style={styles.container}>
+      {/* OVERLAY DE FLASH BLANCO / EXPLOSIÓN */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.flashOverlay,
+          {
+            opacity: Animated.add(flashAnim, explosionAnim),
+          },
+        ]}
+      />
+
       {/* HEADER */}
       <View style={[styles.headerInfo, { width: boardWidth }]}>
         <Text style={[styles.rarityLabel, { color: rarityConfig.color }]}>
@@ -245,7 +295,8 @@ export default function PuzzleBoard({
         </Text>
       </View>
 
-      {phase === 'PREVIEW' ? (
+      {/* VISTA PREVIA (3 SEGUNDOS) */}
+      {phase === 'PREVIEW' && (
         <View style={styles.previewBox}>
           <Text style={styles.previewTitle}>MEMORIZA LA PORTADA</Text>
           {imageSource && (
@@ -260,7 +311,10 @@ export default function PuzzleBoard({
             El puzzle se revuelve en {previewLeft} s…
           </Text>
         </View>
-      ) : (
+      )}
+
+      {/* TABLERO DE JUEGO O VICTORIA */}
+      {(phase === 'PLAY' || phase === 'VICTORY') && (
         <View
           style={[
             styles.boardWrapper,
@@ -268,6 +322,28 @@ export default function PuzzleBoard({
           ]}
         >
           {renderGridRows()}
+
+          {/* EFECTO DE TEXTO "COMPLETADO" AL GANAR */}
+          {phase === 'VICTORY' && (
+            <Animated.View
+              style={[
+                styles.victoryOverlay,
+                {
+                  opacity: victoryTextAnim,
+                  transform: [
+                    {
+                      scale: victoryTextAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.5, 1.1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={styles.victoryText}>¡COMPLETADO!</Text>
+            </Animated.View>
+          )}
         </View>
       )}
 
@@ -278,7 +354,7 @@ export default function PuzzleBoard({
         {powerUpButton('FREEZE', 'Congelar', '❄')}
       </View>
 
-      {/* METADATA */}
+      {/* METADATA DEL ÁLBUM */}
       <View style={styles.albumMeta}>
         <Text style={styles.albumTitle}>{album.title}</Text>
         <Text style={styles.artistName}>{album.artist}</Text>
@@ -291,7 +367,12 @@ export default function PuzzleBoard({
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', justifyContent: 'center' },
+  container: { alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFF',
+    zIndex: 999,
+  },
   headerInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -306,6 +387,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
     backgroundColor: '#000',
     overflow: 'hidden',
+    position: 'relative',
   },
   gridRow: { flexDirection: 'row', width: '100%' },
   pieceBox: {
@@ -335,6 +417,22 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   previewHint: { fontSize: 13, color: '#AAA', marginTop: 4 },
+  victoryOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  },
+  victoryText: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#FFBE0B',
+    letterSpacing: 3,
+    textShadowColor: '#FF0055',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 6,
+  },
   powerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
