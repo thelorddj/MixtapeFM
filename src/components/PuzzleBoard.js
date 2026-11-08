@@ -1,10 +1,8 @@
 // src/components/PuzzleBoard.js
-// Beta v1 — 2026-11-07
-// Fases: PREVIEW (se muestra la portada completa 3 s, el temporizador NO corre)
-// y luego PLAY (tablero revuelto y temporizador en marcha).
-// Mecánica original: tocar dos piezas las intercambia. La mezcla nunca queda
-// ya resuelta. Potenciadores (los compra el jugador en la tienda, con monedas
-// del juego): Pista, +15 s y Congelar 10 s.
+// Beta v1.1 — 2026-11-07
+// Fases: PREVIEW (3s) -> PLAY.
+// Fix: checkVictory garantizado con pequeño delay para render visual de la última pieza.
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -91,7 +89,6 @@ export default function PuzzleBoard({
   const shufflePieces = () => {
     const initial = [];
     for (let i = 0; i < totalPieces; i++) initial.push({ id: i, correctIndex: i });
-    // Mezclar hasta que NO quede ya resuelto.
     let shuffled = [...initial];
     let solved = true;
     while (solved) {
@@ -132,16 +129,18 @@ export default function PuzzleBoard({
     );
     if (isCompleted && !finishedRef.current) {
       finishedRef.current = true;
-      onWin && onWin();
+      // Pequeña pausa para permitir que React Native pinte la última pieza en su lugar
+      setTimeout(() => {
+        onWin && onWin();
+      }, 150);
     }
   };
 
-  // --- Potenciadores (se descuentan en GameScreen) ---
+  // --- Potenciadores ---
   const usePowerUp = (id) => {
     if (phase !== 'PLAY' || finishedRef.current) return;
     if (!powerUps || (powerUps[id] || 0) <= 0) return;
     if (id === 'HINT') {
-      // Coloca una pieza incorrecta en su lugar correcto.
       const wrongIndex = pieces.findIndex(
         (piece, index) => piece.correctIndex !== index
       );
