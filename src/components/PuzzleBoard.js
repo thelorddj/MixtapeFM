@@ -1,7 +1,6 @@
 // src/components/PuzzleBoard.js
-// Beta v1.2 — 2026-11-07
-// Incluye: Flash blanco inicial, Vista previa de 3s, Scramble fluido y 
-// Secuencia de Victoria (Texto "COMPLETADO" + Explosión/Flash a Carátula HD).
+// Beta v1.3 — 2026-11-07
+// Fix Crashing: Animaciones 100% estables para Android nativo / LDPlayer 9.
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -35,10 +34,9 @@ export default function PuzzleBoard({
   const [frozenLeft, setFrozenLeft] = useState(0);
   const finishedRef = useRef(false);
 
-  // Animaciones Nativas
-  const flashAnim = useRef(new Animated.Value(1)).current; // Inicia en flash blanco
-  const victoryTextAnim = useRef(new Animated.Value(0)).current;
-  const explosionAnim = useRef(new Animated.Value(0)).current;
+  // Animaciones Nativas Estables
+  const flashOpacity = useRef(new Animated.Value(1)).current;
+  const victoryOpacity = useRef(new Animated.Value(0)).current;
 
   const rows = rarityConfig.gridSize.rows;
   const cols = rarityConfig.gridSize.cols;
@@ -48,7 +46,7 @@ export default function PuzzleBoard({
   const boardWidth = tileSize * cols;
   const boardHeight = tileSize * rows;
 
-  // Al cargar / cambiar álbum: Transición Flash de inicio
+  // Inicialización de partida
   useEffect(() => {
     finishedRef.current = false;
     setSelectedPiece(null);
@@ -58,34 +56,28 @@ export default function PuzzleBoard({
     setPreviewLeft(PREVIEW_SECONDS);
     initBoard();
 
-    // Efecto Flash Inicial (Fade out de blanco)
-    flashAnim.setValue(1);
-    Animated.timing(flashAnim, {
+    // Flash inicial suave
+    flashOpacity.setValue(1);
+    Animated.timing(flashOpacity, {
       toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
+      duration: 350,
+      useNativeDriver: false,
     }).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album]);
 
-  // Temporizador de PREVIEW (3 segundos)
+  // Temporizador PREVIEW (3 segundos)
   useEffect(() => {
     if (phase !== 'PREVIEW') return undefined;
     if (previewLeft <= 0) {
-      // Flash de transición al Scramble
-      Animated.sequence([
-        Animated.timing(flashAnim, { toValue: 0.8, duration: 150, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-      ]).start(() => {
-        setPhase('PLAY');
-      });
+      setPhase('PLAY');
       return undefined;
     }
     const timer = setTimeout(() => setPreviewLeft((p) => p - 1), 1000);
     return () => clearTimeout(timer);
   }, [phase, previewLeft]);
 
-  // Temporizador principal (solo en PLAY)
+  // Temporizador principal (PLAY)
   useEffect(() => {
     if (phase !== 'PLAY' || finishedRef.current) return undefined;
     const timer = setInterval(() => {
@@ -143,7 +135,7 @@ export default function PuzzleBoard({
     }
   };
 
-  // --- Lógica y Secuencia de Animación de Victoria ---
+  // Secuencia de Victoria
   const checkVictory = (currentPieces) => {
     const isCompleted = currentPieces.every(
       (piece, index) => piece.correctIndex === index
@@ -151,27 +143,22 @@ export default function PuzzleBoard({
 
     if (isCompleted && !finishedRef.current) {
       finishedRef.current = true;
-
-      // 1. Cambiar a fase Victoria
       setPhase('VICTORY');
 
-      // 2. Mostrar Texto "COMPLETADO" con Zoom y Destello
-      Animated.timing(victoryTextAnim, {
+      Animated.timing(victoryOpacity, {
         toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
+        duration: 300,
+        useNativeDriver: false,
       }).start(() => {
-        // 3. Esperar 1.2 segundos y lanzar "Explosión / Flash Blanco"
         setTimeout(() => {
-          Animated.timing(explosionAnim, {
+          Animated.timing(flashOpacity, {
             toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
+            duration: 400,
+            useNativeDriver: false,
           }).start(() => {
-            // 4. Disparar Callback de Win hacia el contenedor principal
             onWin && onWin();
           });
-        }, 1200);
+        }, 1000);
       });
     }
   };
@@ -273,13 +260,13 @@ export default function PuzzleBoard({
 
   return (
     <View style={styles.container}>
-      {/* OVERLAY DE FLASH BLANCO / EXPLOSIÓN */}
+      {/* OVERLAY FLASH SEGURO */}
       <Animated.View
         pointerEvents="none"
         style={[
           styles.flashOverlay,
           {
-            opacity: Animated.add(flashAnim, explosionAnim),
+            opacity: flashOpacity,
           },
         ]}
       />
@@ -295,7 +282,7 @@ export default function PuzzleBoard({
         </Text>
       </View>
 
-      {/* VISTA PREVIA (3 SEGUNDOS) */}
+      {/* VISTA PREVIA (PREVIEW) */}
       {phase === 'PREVIEW' && (
         <View style={styles.previewBox}>
           <Text style={styles.previewTitle}>MEMORIZA LA PORTADA</Text>
@@ -313,7 +300,7 @@ export default function PuzzleBoard({
         </View>
       )}
 
-      {/* TABLERO DE JUEGO O VICTORIA */}
+      {/* TABLERO */}
       {(phase === 'PLAY' || phase === 'VICTORY') && (
         <View
           style={[
@@ -323,21 +310,12 @@ export default function PuzzleBoard({
         >
           {renderGridRows()}
 
-          {/* EFECTO DE TEXTO "COMPLETADO" AL GANAR */}
           {phase === 'VICTORY' && (
             <Animated.View
               style={[
                 styles.victoryOverlay,
                 {
-                  opacity: victoryTextAnim,
-                  transform: [
-                    {
-                      scale: victoryTextAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 1.1],
-                      }),
-                    },
-                  ],
+                  opacity: victoryOpacity,
                 },
               ]}
             >
@@ -354,7 +332,7 @@ export default function PuzzleBoard({
         {powerUpButton('FREEZE', 'Congelar', '❄')}
       </View>
 
-      {/* METADATA DEL ÁLBUM */}
+      {/* METADATA */}
       <View style={styles.albumMeta}>
         <Text style={styles.albumTitle}>{album.title}</Text>
         <Text style={styles.artistName}>{album.artist}</Text>
@@ -429,9 +407,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFBE0B',
     letterSpacing: 3,
-    textShadowColor: '#FF0055',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
   },
   powerRow: {
     flexDirection: 'row',
