@@ -34,6 +34,7 @@ export default function App() {
               // de la pantalla es "Cassette Riders", no "Minijuego")
               iconName = focused ? 'game-controller' : 'game-controller-outline';
             }
+            if (!iconName) iconName = 'game-controller-outline';
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
@@ -65,7 +66,7 @@ export default function App() {
         <Tab.Screen name="Radio" component={PlayerScreen} />
         <Tab.Screen name="Programación" component={ScheduleScreen} />
         {/* 3. Agregamos la pestaña del juego */}
-        <Tab.Screen name="Cassete Riders" component={GameScreen} />
+        <Tab.Screen name="Cassette Riders" component={GameScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );

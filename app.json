@@ -42,7 +42,15 @@
       }
     }
   ],
-  "expo-asset"
+  "expo-asset",
+  [
+    "expo-splash-screen",
+    {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    }
+  ]
 ],
     "extra": {
       "eas": {

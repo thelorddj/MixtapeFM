@@ -38,8 +38,9 @@ export default function PuzzleBoard({
   const flashOpacity = useRef(new Animated.Value(1)).current;
   const victoryOpacity = useRef(new Animated.Value(0)).current;
 
-  const rows = rarityConfig.gridSize.rows;
-  const cols = rarityConfig.gridSize.cols;
+  // Guard: si el álbum o su config no llegan, no reventar al entrar al juego.
+  const rows = (rarityConfig && rarityConfig.gridSize && rarityConfig.gridSize.rows) || 4;
+  const cols = (rarityConfig && rarityConfig.gridSize && rarityConfig.gridSize.cols) || 5;
   const totalPieces = rows * cols;
 
   const tileSize = Math.floor(MAX_BOARD_SIZE / cols);
@@ -192,9 +193,11 @@ export default function PuzzleBoard({
   };
 
   const imageSource =
-    typeof album.pixelCover === 'string'
+    album && typeof album.pixelCover === 'string'
       ? { uri: album.pixelCover }
-      : album.pixelCover;
+      : album
+        ? album.pixelCover
+        : null;
 
   const renderGridRows = () => {
     const gridRows = [];
@@ -257,6 +260,8 @@ export default function PuzzleBoard({
       </TouchableOpacity>
     );
   };
+
+  if (!album || !rarityConfig || !rarityConfig.gridSize) return null;
 
   return (
     <View style={styles.container}>
