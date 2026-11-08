@@ -38,10 +38,6 @@ const MAX_LIVES = 3;
 const STARTING_COINS = 50;
 const RADIO_TASK_COINS = 20;
 const HERO_IMAGE = require('../../assets/game/hero-turntable-earth.png');
-// NOTA BETA: hero-turntable-earth.png es un archivo binario y NO va en el
-// .patch. Hay que copiarlo a mano a assets/game/ antes de correr la app
-// (ver SUMMARY.md). Las imágenes Play.png / Colecciones.png / Shop.png ya
-// existían en el repo.
 
 export default function GameScreen() {
   const [currentTab, setCurrentTab] = useState('MENU');
